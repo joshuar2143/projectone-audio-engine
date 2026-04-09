@@ -11,6 +11,7 @@ template <typename T>
 void writeValue(std::ofstream& file, T value) {
     file.write(reinterpret_cast<const char*>(&value), sizeof(T));
 }
+
 } // namespace
 
 bool WavWriter::writePcm16(const std::string& filePath, const AudioBuffer& buffer, int sampleRate) {
@@ -25,7 +26,6 @@ bool WavWriter::writePcm16(const std::string& filePath, const AudioBuffer& buffe
     const std::uint16_t blockAlign = channels * (bitsPerSample / 8);
     const std::uint32_t byteRate = static_cast<std::uint32_t>(sampleRate) * blockAlign;
     const std::uint32_t dataSize = samplesPerChannel * blockAlign;
-
     file.write("RIFF", 4);
     writeValue<std::uint32_t>(file, 36 + dataSize);
     file.write("WAVE", 4);
@@ -47,7 +47,6 @@ bool WavWriter::writePcm16(const std::string& filePath, const AudioBuffer& buffe
             writeValue<std::int16_t>(file, pcm);
         }
     }
-
     return true;
 }
 

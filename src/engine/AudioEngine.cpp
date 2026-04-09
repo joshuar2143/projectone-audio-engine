@@ -13,8 +13,8 @@ void AudioEngine::prepare(double sampleRate, std::size_t blockSize, std::size_t 
 
     m_synth.prepare(sampleRate, 16);
     m_fx.prepare(sampleRate, blockSize);
-    m_sequencer.prepare(sampleRate, 124.0, 96);
-    m_sequencer.setPattern({{65, 0.8f, 0, 4}, {82, 0.7f, 4, 4}, {98, 0.7f, 8, 4}, {82, 0.9f, 12, 4}}, 16);
+    m_sequencer.prepare(sampleRate, 50.0, 96);
+    m_sequencer.setPattern({{90, 0.8f, 0, 4}, {60, 0.7f, 4, 4}, {70, 0.7f, 8, 4}, {65, 0.9f, 12, 4}, {62, 0.9f, 4, 8}, {52, 0.9f, 8, 8}}, 16);
 }
 
 void AudioEngine::process(AudioBuffer& buffer) {

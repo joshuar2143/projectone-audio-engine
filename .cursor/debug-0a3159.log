@@ -1,0 +1,5 @@
+{"sessionId":"0a3159","runId":"initial","hypothesisId":"H1","location":"AudioEngine.cpp:renderOfflineWav","message":"render start","data":{"frames":144000,"channels":2,"sampleRate":12000.000000,"blockSize":512},"timestamp":1775739212597}
+{"sessionId":"0a3159","runId":"initial","hypothesisId":"H2","location":"AudioEngine.cpp:process","message":"process completed","data":{"bufferSamples":144000,"midiEvents":108000,"elapsedMs":59801.900584},"timestamp":1775739272402}
+{"sessionId":"0a3159","runId":"initial","hypothesisId":"H4","location":"WavWriter.cpp:writePcm16","message":"wav header values","data":{"sampleRate":12000,"channels":2,"samplesPerChannel":144000,"dataSize":576000},"timestamp":1775739272405}
+{"sessionId":"0a3159","runId":"initial","hypothesisId":"H5","location":"WavWriter.cpp:writePcm16","message":"wav write completed","data":{"streamGood":true,"framesWritten":144000},"timestamp":1775739272411}
+{"sessionId":"0a3159","runId":"initial","hypothesisId":"H3","location":"AudioEngine.cpp:renderOfflineWav","message":"render end","data":{"writeOk":true,"renderedFrames":144000},"timestamp":1775739272411}
