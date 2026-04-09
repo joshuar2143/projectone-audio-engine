@@ -1,0 +1,6 @@
+engine_demo
+engine_demo_opt
+demo_render.wav
+demo_project.json
+build/
+.DS_Store
