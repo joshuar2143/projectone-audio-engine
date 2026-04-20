@@ -21,6 +21,7 @@ float SynthVoiceEngine::midiNoteToHz(int note) const {
 
 float SynthVoiceEngine::nextLfo() {
     constexpr float twoPi = 6.28318530718f;
+    // Calculate the sine of the lfo phase.
     const float out = std::sin(m_lfoPhase);
     m_lfoPhase += twoPi * m_params.lfoRateHz / static_cast<float>(m_sampleRate);
     if (m_lfoPhase >= twoPi) {
@@ -31,12 +32,16 @@ float SynthVoiceEngine::nextLfo() {
 
 void SynthVoiceEngine::applyMidiEvent(const MidiEvent& evt) {
     if (evt.noteOn) {
+        // Find the first inactive voice 
         auto it = std::find_if(m_voices.begin(), m_voices.end(), [](const Voice& v) { return !v.active; });
+        // If no inactive voice is found, use the first voice.
         if (it == m_voices.end()) {
             it = m_voices.begin();
         }
+        // Set the voice to active, with the note, velocity, and phase.
         *it = Voice {true, evt.note, evt.velocity, 0.0f, 0.0f, false};
     } else {
+        // Find the voice with the matching note and set it to releasing.
         for (auto& v : m_voices) {
             if (v.active && v.note == evt.note) {
                 v.releasing = true;
@@ -56,7 +61,9 @@ float SynthVoiceEngine::renderVoice(Voice& voice, float lfo) {
         return 0.0f;
     }
     constexpr float twoPi = 6.28318530718f;
-    const float freq = midiNoteToHz(voice.note + static_cast<int>(lfo * m_params.lfoToPitch));
+    // Apply pitch modulation in fractional semitones for smooth vibrato.
+    const float noteWithLfo = static_cast<float>(voice.note) + lfo * m_params.lfoToPitch;
+    const float freq = 440.0f * std::pow(2.0f, (noteWithLfo - 69.0f) / 12.0f);
     voice.phase += twoPi * freq / static_cast<float>(m_sampleRate);
     if (voice.phase > twoPi) {
         voice.phase -= twoPi;
@@ -84,6 +91,7 @@ void SynthVoiceEngine::render(float* left, float* right, std::size_t frames, con
     std::size_t midiCursor = 0;
     for (std::size_t i = 0; i < frames; ++i) {
         while (midiCursor < midi.size() && midi[midiCursor].frameOffset == i) {
+            // Turn the midi event into a voice event.
             applyMidiEvent(midi[midiCursor]);
             ++midiCursor;
         }
