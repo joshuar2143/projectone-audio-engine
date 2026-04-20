@@ -44,15 +44,16 @@ private:
 
     float midiNoteToHz(int note) const;
     float nextLfo();
-    void processMidiAtFrame(std::size_t frame, const std::vector<MidiEvent>& midi);
-    float renderVoice(Voice& voice);
-    float lowPassTick(float in);
+    void applyMidiEvent(const MidiEvent& evt);
+    float renderVoice(Voice& voice, float lfo);
+    float lowPassTick(float in, float cutoffHz);
 
     double m_sampleRate {48000.0};
     std::vector<Voice> m_voices {};
     SynthParams m_params {};
     float m_lfoPhase {0.0f};
     float m_filterState {0.0f};
+    float m_cutoffBase {0.0f};
 };
 
 } // namespace projectone::synth

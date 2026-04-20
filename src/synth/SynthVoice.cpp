@@ -12,6 +12,7 @@ void SynthVoiceEngine::prepare(double sampleRate, std::size_t maxVoices) {
 
 void SynthVoiceEngine::setParams(const SynthParams& params) {
     m_params = params;
+    m_cutoffBase = params.cutoffHz;
 }
 
 float SynthVoiceEngine::midiNoteToHz(int note) const {
@@ -28,39 +29,33 @@ float SynthVoiceEngine::nextLfo() {
     return out;
 }
 
-void SynthVoiceEngine::processMidiAtFrame(std::size_t frame, const std::vector<MidiEvent>& midi) {
-    for (const auto& evt : midi) {
-        if (evt.frameOffset != frame) {
-            continue;
+void SynthVoiceEngine::applyMidiEvent(const MidiEvent& evt) {
+    if (evt.noteOn) {
+        auto it = std::find_if(m_voices.begin(), m_voices.end(), [](const Voice& v) { return !v.active; });
+        if (it == m_voices.end()) {
+            it = m_voices.begin();
         }
-        if (evt.noteOn) {
-            auto it = std::find_if(m_voices.begin(), m_voices.end(), [](const Voice& v) { return !v.active; });
-            if (it == m_voices.end()) {
-                it = m_voices.begin();
-            }
-            *it = Voice {true, evt.note, evt.velocity, 0.0f, 0.0f, false};
-        } else {
-            for (auto& v : m_voices) {
-                if (v.active && v.note == evt.note) {
-                    v.releasing = true;
-                }
+        *it = Voice {true, evt.note, evt.velocity, 0.0f, 0.0f, false};
+    } else {
+        for (auto& v : m_voices) {
+            if (v.active && v.note == evt.note) {
+                v.releasing = true;
             }
         }
     }
 }
 
-float SynthVoiceEngine::lowPassTick(float in) {
-    const float alpha = std::clamp(m_params.cutoffHz / static_cast<float>(m_sampleRate), 0.001f, 0.45f);
+float SynthVoiceEngine::lowPassTick(float in, float cutoffHz) {
+    const float alpha = std::clamp(cutoffHz / static_cast<float>(m_sampleRate), 0.001f, 0.45f);
     m_filterState += alpha * (in - m_filterState);
     return m_filterState;
 }
 
-float SynthVoiceEngine::renderVoice(Voice& voice) {
+float SynthVoiceEngine::renderVoice(Voice& voice, float lfo) {
     if (!voice.active) {
         return 0.0f;
     }
     constexpr float twoPi = 6.28318530718f;
-    const float lfo = nextLfo();
     const float freq = midiNoteToHz(voice.note + static_cast<int>(lfo * m_params.lfoToPitch));
     voice.phase += twoPi * freq / static_cast<float>(m_sampleRate);
     if (voice.phase > twoPi) {
@@ -86,15 +81,19 @@ float SynthVoiceEngine::renderVoice(Voice& voice) {
 }
 
 void SynthVoiceEngine::render(float* left, float* right, std::size_t frames, const std::vector<MidiEvent>& midi) {
+    std::size_t midiCursor = 0;
     for (std::size_t i = 0; i < frames; ++i) {
-        processMidiAtFrame(i, midi);
+        while (midiCursor < midi.size() && midi[midiCursor].frameOffset == i) {
+            applyMidiEvent(midi[midiCursor]);
+            ++midiCursor;
+        }
+        const float lfo = nextLfo();
         float sum = 0.0f;
         for (auto& voice : m_voices) {
-            sum += renderVoice(voice);
+            sum += renderVoice(voice, lfo);
         }
-        const float modCutoff = m_params.cutoffHz + nextLfo() * m_params.lfoToCutoff;
-        m_params.cutoffHz = std::max(60.0f, modCutoff);
-        const float filtered = lowPassTick(sum) * m_params.masterGain;
+        const float modCutoff = std::max(60.0f, m_cutoffBase + lfo * m_params.lfoToCutoff);
+        const float filtered = lowPassTick(sum, modCutoff) * m_params.masterGain;
         left[i] += filtered;
         right[i] += filtered;
     }
