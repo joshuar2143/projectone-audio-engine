@@ -7,7 +7,7 @@ int main() {
     projectone::engine::AudioEngine engine;
     engine.prepare(48000.0, 512, 2);
 
-    if (!engine.renderOfflineWav("demo_render.wav", 48000 * 60)) {
+    if (!engine.renderOfflineWav("demo_render.wav", 48000 * 20)) {
         std::cerr << "Failed to render demo wav\n";
         return 1;
     }

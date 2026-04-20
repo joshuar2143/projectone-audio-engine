@@ -20,7 +20,10 @@ void AudioEngine::prepare(double sampleRate, std::size_t blockSize, std::size_t 
 void AudioEngine::process(AudioBuffer& buffer) {
     const auto start = std::chrono::high_resolution_clock::now();
     buffer.clear();
+    // find the midi events for the current block, where the note starts and ends in the current frmae
+    // eg note starting at step 6 turns into a frameOffset (54359 or something)
     auto midi = m_sequencer.buildMidiForBlock(buffer.samples());
+    // render the synth, passing in the buffer, the number of frames, and the midi events.
     m_synth.render(buffer.channelData(0), buffer.channelData(1), buffer.samples(), midi);
     m_fx.process(buffer.channelData(0), buffer.channelData(1), buffer.samples());
     m_metrics.addRenderedFrames(buffer.samples());

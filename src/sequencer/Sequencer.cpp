@@ -35,11 +35,14 @@ std::vector<projectone::synth::MidiEvent> Sequencer::buildMidiForBlock(std::size
     const std::size_t blockEnd = m_sampleCursor + frames;
     const std::size_t firstStepIdx = static_cast<std::size_t>(std::ceil(static_cast<double>(blockStart) / stepSamples));
 
+    // Calculate the maximum number of step boundaries that will be needed for the current block.
     const std::size_t maxStepBoundaries =
         static_cast<std::size_t>(std::ceil(static_cast<double>(frames) / stepSamples)) + 1;
-    out.reserve(maxStepBoundaries * m_notes.size() * 2);
+    out.reserve(maxStepBoundaries * m_notes.size() * 2); // reserve space for the worst case 
+    // This is a common optimization technique in C++ to avoid unnecessary memory allocations during the loop.
 
     for (std::size_t stepIdx = firstStepIdx;; ++stepIdx) {
+        // Convert the step index to a sample index, which of the sample in the block that the step corresponds to.
         const std::size_t sampleOfStep = static_cast<std::size_t>(std::llround(stepIdx * stepSamples));
         if (sampleOfStep >= blockEnd) {
             break;
@@ -48,9 +51,12 @@ std::vector<projectone::synth::MidiEvent> Sequencer::buildMidiForBlock(std::size
         const std::size_t step = stepIdx % m_totalSteps;
         const std::size_t frameOffset = sampleOfStep - blockStart;
         for (const auto& n : m_notes) {
+            // check if the note starts at the current step, 4 == 4 means the note starts at the current step.
             if (n.startStep == step) {
                 out.push_back(projectone::synth::MidiEvent {frameOffset, n.note, n.velocity, true});
             }
+            // check if the note ends at the current step, 4 + 4 == 8 means the note ends at the 8th step, 
+            // if note ends aftere the total steps, the % m_totalSteps will wrap around to 0.
             if ((n.startStep + n.lengthSteps) % m_totalSteps == step) {
                 out.push_back(projectone::synth::MidiEvent {frameOffset, n.note, 0.0f, false});
             }
