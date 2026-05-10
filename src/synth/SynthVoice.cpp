@@ -15,10 +15,6 @@ void SynthVoiceEngine::setParams(const SynthParams& params) {
     m_cutoffBase = params.cutoffHz;
 }
 
-float SynthVoiceEngine::midiNoteToHz(int note) const {
-    return 440.0f * std::pow(2.0f, (static_cast<float>(note) - 69.0f) / 12.0f);
-}
-
 float SynthVoiceEngine::nextLfo() {
     constexpr float twoPi = 6.28318530718f;
     // Calculate the sine of the lfo phase.
@@ -61,9 +57,10 @@ float SynthVoiceEngine::renderVoice(Voice& voice, float lfo) {
         return 0.0f;
     }
     constexpr float twoPi = 6.28318530718f;
-    // Apply pitch modulation in fractional semitones for smooth vibrato.
+    // Apply pitch modulation voice + LFO*lfoToPitch 
     const float noteWithLfo = static_cast<float>(voice.note) + lfo * m_params.lfoToPitch;
     const float freq = 440.0f * std::pow(2.0f, (noteWithLfo - 69.0f) / 12.0f);
+    // Update the phase of the voice with the new frequency.
     voice.phase += twoPi * freq / static_cast<float>(m_sampleRate);
     if (voice.phase > twoPi) {
         voice.phase -= twoPi;
@@ -71,8 +68,10 @@ float SynthVoiceEngine::renderVoice(Voice& voice, float lfo) {
     const float osc = (voice.phase / 3.14159265f) - 1.0f;
 
     if (voice.releasing) {
+        // Release the envelope, releaseSec is the time it takes to release the envelope.
         voice.env -= 1.0f / std::max(1.0f, m_params.releaseSec * static_cast<float>(m_sampleRate));
     } else {
+        // attack it towards 1 over attackSec, then decay towards sustain over decaySec
         const float attackDelta = 1.0f / std::max(1.0f, m_params.attackSec * static_cast<float>(m_sampleRate));
         voice.env = std::min(1.0f, voice.env + attackDelta);
         if (voice.env > m_params.sustain) {
@@ -84,6 +83,7 @@ float SynthVoiceEngine::renderVoice(Voice& voice, float lfo) {
         voice.active = false;
         return 0.0f;
     }
+    // single sample output of the voice combining the oscillator, envelope, and velocity.
     return osc * voice.env * voice.velocity;
 }
 
@@ -97,11 +97,15 @@ void SynthVoiceEngine::render(float* left, float* right, std::size_t frames, con
         }
         const float lfo = nextLfo();
         float sum = 0.0f;
+        // sum the output of all the voices at this point
         for (auto& voice : m_voices) {
             sum += renderVoice(voice, lfo);
         }
+        // apply the cutoff modulation to the sum of the voices
         const float modCutoff = std::max(60.0f, m_cutoffBase + lfo * m_params.lfoToCutoff);
+        // apply the cutoff modulation to the sum of the voices and apply the master gain (final volume)
         const float filtered = lowPassTick(sum, modCutoff) * m_params.masterGain;
+        // apply the filtered output to the left and right channels equally 
         left[i] += filtered;
         right[i] += filtered;
     }

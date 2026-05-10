@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <ostream>
 #include <utility>
 
 namespace projectone::sequencer {
@@ -18,6 +19,14 @@ void Sequencer::setPattern(std::vector<PatternNote> notes, std::size_t totalStep
     m_totalSteps = totalSteps;
 }
 
+void Sequencer::resetTransport() {
+    m_sampleCursor = 0;
+}
+
+double Sequencer::samplesPerSixteenthNote() const {
+    return (60.0 / m_bpm) * m_sampleRate / 4.0;
+}
+
 std::vector<projectone::synth::MidiEvent> Sequencer::buildMidiForBlock(std::size_t frames) {
     std::vector<projectone::synth::MidiEvent> out;
     if (frames == 0 || m_totalSteps == 0 || m_notes.empty()) {
@@ -25,7 +34,7 @@ std::vector<projectone::synth::MidiEvent> Sequencer::buildMidiForBlock(std::size
         return out;
     }
 
-    const double stepSamples = (60.0 / m_bpm) * m_sampleRate / 4.0; // 16th grid
+    const double stepSamples = samplesPerSixteenthNote();
     if (stepSamples <= 0.0) {
         m_sampleCursor += frames;
         return out;
@@ -76,6 +85,67 @@ std::vector<projectone::synth::MidiEvent> Sequencer::buildMidiForBlock(std::size
 
     m_sampleCursor += frames;
     return out;
+}
+
+bool Sequencer::verifyMidiTiming(std::size_t totalFrames, std::size_t blockSize, std::ostream& out) {
+    resetTransport();
+    const double stepSamples = samplesPerSixteenthNote();
+
+    out << "MIDI timing check (16th-note grid)\n";
+    out << "  sampleRate=" << m_sampleRate << " bpm=" << m_bpm << " samplesPer16th=" << stepSamples;
+    out << " (16th duration " << (60.0 / m_bpm / 4.0) << " s)\n";
+    out << "  totalFrames=" << totalFrames << " blockSize=" << blockSize << " patternSteps=" << m_totalSteps << "\n";
+
+    if (totalFrames == 0 || blockSize == 0 || m_bpm <= 0.0 || stepSamples <= 0.0) {
+        out << "  abort: invalid parameters\n";
+        return false;
+    }
+
+    bool allOk = true;
+    std::size_t blockStart = 0;
+    while (blockStart < totalFrames) {
+        const std::size_t n = std::min(blockSize, totalFrames - blockStart);
+        const std::vector<projectone::synth::MidiEvent> events = buildMidiForBlock(n);
+        for (const auto& evt : events) {
+            const std::size_t absSample = blockStart + evt.frameOffset;
+            const auto stepIdx =
+                static_cast<std::size_t>(std::llround(static_cast<double>(absSample) / stepSamples));
+            const auto predicted =
+                static_cast<std::size_t>(std::llround(static_cast<double>(stepIdx) * stepSamples));
+            const bool gridOk = (predicted == absSample);
+            const std::size_t stepInPattern = stepIdx % m_totalSteps;
+
+            bool patternOk = false;
+            if (evt.noteOn) {
+                for (const auto& pn : m_notes) {
+                    if (pn.note == evt.note && pn.startStep == stepInPattern) {
+                        patternOk = true;
+                        break;
+                    }
+                }
+            } else {
+                for (const auto& pn : m_notes) {
+                    if (pn.note == evt.note
+                        && (pn.startStep + pn.lengthSteps) % m_totalSteps == stepInPattern) {
+                        patternOk = true;
+                        break;
+                    }
+                }
+            }
+
+            const bool lineOk = gridOk && patternOk;
+            allOk = allOk && lineOk;
+
+            out << "  absSample=" << absSample << " frameOff=" << evt.frameOffset << " block0=" << blockStart
+                << (evt.noteOn ? " NOTE_ON " : " NOTE_OFF") << " note=" << evt.note << " vel=" << evt.velocity
+                << " stepIdx=" << stepIdx << " stepInPat=" << stepInPattern << " grid=" << (gridOk ? "ok" : "BAD")
+                << " pattern=" << (patternOk ? "ok" : "BAD") << "\n";
+        }
+        blockStart += n;
+    }
+
+    out << (allOk ? "All events aligned.\n" : "MISMATCH detected.\n");
+    return allOk;
 }
 
 } // namespace projectone::sequencer

@@ -24,7 +24,9 @@ void AudioEngine::process(AudioBuffer& buffer) {
     // eg note starting at step 6 turns into a frameOffset (54359 or something)
     auto midi = m_sequencer.buildMidiForBlock(buffer.samples());
     // render the synth, passing in the buffer, the number of frames, and the midi events.
+    // adds every sample to left and right channel buffers
     m_synth.render(buffer.channelData(0), buffer.channelData(1), buffer.samples(), midi);
+    // applies the effects to the left and right channels
     m_fx.process(buffer.channelData(0), buffer.channelData(1), buffer.samples());
     m_metrics.addRenderedFrames(buffer.samples());
 
