@@ -1,0 +1,61 @@
+
+
+========================================
+PROJECT ONE — ASSESSMENT SELF-CHECK
+========================================
+Running all criteria checks...
+
+========================================
+CHECK 1: Execute across buffer sizes 128, 256, 512, full offline frame count
+========================================
+  blockSize=128 -> test_buffer_128.wav (last process() ms=0.004417)
+[PASS] blockSize=128 render OK
+  blockSize=256 -> test_buffer_256.wav (last process() ms=0.008792)
+[PASS] blockSize=256 render OK
+  blockSize=512 -> test_buffer_512.wav (last process() ms=0.017667)
+[PASS] blockSize=512 render OK
+  blockSize=960000 -> test_buffer_960000.wav (last process() ms=35.1632)
+[PASS] blockSize=960000 render OK
+
+========================================
+CHECK 2: MIDI @ 50 BPM (events vs step grid)
+========================================
+  stepSamples = (60 / BPM) * sampleRate / 4  =>  14400 @ 48 kHz, 50 BPM
+  (sample events below; use --verify-midi for full listing)
+    absSample=0 OFF note=52 stepIdx=0 patStep=0 grid=ok pattern=ok
+    absSample=0 OFF note=65 stepIdx=0 patStep=0 grid=ok pattern=ok
+    absSample=0 ON  note=90 stepIdx=0 patStep=0 grid=ok pattern=ok
+  blockSize=128: 36 events, samplesPer16th=14400 (showing 3 sample lines) -> all aligned
+    absSample=0 OFF note=52 stepIdx=0 patStep=0 grid=ok pattern=ok
+    absSample=0 OFF note=65 stepIdx=0 patStep=0 grid=ok pattern=ok
+    absSample=0 ON  note=90 stepIdx=0 patStep=0 grid=ok pattern=ok
+  blockSize=256: 36 events, samplesPer16th=14400 (showing 3 sample lines) -> all aligned
+    absSample=0 OFF note=52 stepIdx=0 patStep=0 grid=ok pattern=ok
+    absSample=0 OFF note=65 stepIdx=0 patStep=0 grid=ok pattern=ok
+    absSample=0 ON  note=90 stepIdx=0 patStep=0 grid=ok pattern=ok
+  blockSize=512: 36 events, samplesPer16th=14400 (showing 3 sample lines) -> all aligned
+[PASS] 128 / 256 / 512 block sizes: all events aligned to grid and pattern
+
+========================================
+CHECK 3: Twenty-second stereo WAV (demo_render.wav)
+========================================
+  File: demo_render.wav
+  Sample rate: 48000 Hz
+  Channels: 2
+  Bits: 16
+  Frames/channel: 960000
+  Duration: 20 s
+  Last process() ms: 0.019459
+[PASS] Valid 20 s stereo PCM-16 WAV at 48 kHz — open in any audio app to confirm playback
+
+========================================
+SUMMARY
+========================================
+[PASS] Buffer sizes 128 / 256 / 512 / full offline
+[PASS] MIDI sample offsets @ 50 BPM
+[PASS] 20 s stereo WAV export
+
+========================================
+ALL CHECKS PASSED
+========================================
+[PASS] demo_project.json saved

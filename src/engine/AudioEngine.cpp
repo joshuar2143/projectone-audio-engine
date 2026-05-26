@@ -1,16 +1,30 @@
 #include "engine/AudioEngine.h"
 #include "engine/WavWriter.h"
 
+#include <algorithm>
 #include <chrono>
-#include <vector>
+#include <cstring>
 
 namespace projectone::engine {
+
+namespace {
+
+void copyBlockToOutput(const AudioBuffer& block, AudioBuffer& output, std::size_t destOffset, std::size_t frames) {
+    for (std::size_t c = 0; c < block.channels(); ++c) {
+        float* dst = output.channelData(c) + destOffset;
+        const float* src = block.channelData(c);
+        std::memcpy(dst, src, frames * sizeof(float));
+    }
+}
+
+} // namespace
 
 void AudioEngine::prepare(double sampleRate, std::size_t blockSize, std::size_t channels) {
     m_sampleRate = sampleRate;
     m_blockSize = blockSize;
     m_channels = channels;
 
+    m_blockBuffer.resize(channels, blockSize);
     m_synth.prepare(sampleRate, 16);
     m_fx.prepare(sampleRate, blockSize);
     m_sequencer.prepare(sampleRate, 50.0, 96);
@@ -20,13 +34,8 @@ void AudioEngine::prepare(double sampleRate, std::size_t blockSize, std::size_t 
 void AudioEngine::process(AudioBuffer& buffer) {
     const auto start = std::chrono::high_resolution_clock::now();
     buffer.clear();
-    // find the midi events for the current block, where the note starts and ends in the current frmae
-    // eg note starting at step 6 turns into a frameOffset (54359 or something)
-    auto midi = m_sequencer.buildMidiForBlock(buffer.samples());
-    // render the synth, passing in the buffer, the number of frames, and the midi events.
-    // adds every sample to left and right channel buffers
+    const auto& midi = m_sequencer.buildMidiForBlock(buffer.samples());
     m_synth.render(buffer.channelData(0), buffer.channelData(1), buffer.samples(), midi);
-    // applies the effects to the left and right channels
     m_fx.process(buffer.channelData(0), buffer.channelData(1), buffer.samples());
     m_metrics.addRenderedFrames(buffer.samples());
 
@@ -36,9 +45,21 @@ void AudioEngine::process(AudioBuffer& buffer) {
 }
 
 bool AudioEngine::renderOfflineWav(const char* path, std::size_t frames) {
-    AudioBuffer buffer(m_channels, frames);
-    process(buffer);
-    return WavWriter::writePcm16(path, buffer, static_cast<int>(m_sampleRate));
+    AudioBuffer output(m_channels, frames);
+    m_sequencer.resetTransport();
+
+    std::size_t written = 0;
+    while (written < frames) {
+        const std::size_t n = std::min(m_blockSize, frames - written);
+        if (m_blockBuffer.samples() != n || m_blockBuffer.channels() != m_channels) {
+            m_blockBuffer.resize(m_channels, n);
+        }
+        process(m_blockBuffer);
+        copyBlockToOutput(m_blockBuffer, output, written, n);
+        written += n;
+    }
+
+    return WavWriter::writePcm16(path, output, static_cast<int>(m_sampleRate));
 }
 
 } // namespace projectone::engine

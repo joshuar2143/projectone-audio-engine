@@ -1,27 +1,40 @@
 # Test notes
 
-## Manual smoke test
+## Build
 
-| Step | Command | Expected result |
-|------|---------|-----------------|
-| Configure | `cmake -S . -B build -DCMAKE_BUILD_TYPE=Release` | CMake finishes without errors |
-| Build | `cmake --build build` | `engine_demo` links successfully |
-| Run | `./build/engine_demo` | Exit code `0` |
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+# or: make
+```
 
-## What the demo checks
+## Default run (all assessment checks)
 
-- **Offline render:** Writes `demo_render.wav` (48 kHz, ~20 s of audio from one full `AudioEngine::process` pass: sequencer → synth → effects chain).
-- **Project save:** Writes `demo_project.json` with a small note list.
-- **Metrics:** Console prints `Render complete. Last callback ms: …` (time for that offline processing block).
+```bash
+./build/engine_demo
+```
+
+Prints three sections to the terminal:
+
+1. **Buffer sizes** — render at 128, 256, 512, and full offline frame count (960000)
+2. **MIDI @ 50 BPM** — short summary + a few sample events (`grid=ok` / `pattern=ok`). Full event list: `--verify-midi`
+3. **20 s WAV** — writes `demo_render.wav`, validates 48 kHz stereo PCM-16 (~20 s)
+
+Ends with **ALL CHECKS PASSED** or **SOME CHECKS FAILED** (exit 0 / 1).
+
+## Optional flags
+
+| Command | What it runs |
+|---------|----------------|
+| `./build/engine_demo --test-buffers` | Check 1 only |
+| `./build/engine_demo --verify-midi` | Check 2 only |
+| `./build/engine_demo --demo-only` | Check 3 only |
+
+## Manual step
+
+Open `demo_render.wav` in QuickTime / Audacity to confirm it **sounds** correct (terminal only validates file format and duration).
 
 ## Results (fill in locally)
 
-- Build: pass / fail — _date / machine_
-- Run: pass / fail — _any errors or warnings_
-- Output files: `demo_render.wav` and `demo_project.json` present — yes / no
-- Audio spot-check (optional): open the WAV — _hear tone/pattern, clipping, silence, etc._
-
-## Notes
-
-- There is no separate automated unit-test target in CMake yet; this smoke test is the main repeatable check.
-- For live device I/O, the project can be built with `-DAUDIO_ENGINE_ENABLE_JUCE=ON` (requires network for the JUCE fetch on first configure).
+- Date / machine:
+- `./build/engine_demo`: pass / fail
+- Playback spot-check: ok / issue

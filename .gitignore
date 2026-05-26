@@ -2,5 +2,6 @@ engine_demo
 engine_demo_opt
 demo_render.wav
 demo_project.json
+test_buffer_*.wav
 build/
 .DS_Store

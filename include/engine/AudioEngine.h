@@ -16,6 +16,7 @@ public:
     void process(AudioBuffer& buffer);
     bool renderOfflineWav(const char* path, std::size_t frames);
 
+    std::size_t blockSize() const { return m_blockSize; }
     AudioMetrics& metrics() { return m_metrics; }
     projectone::synth::SynthVoiceEngine& synth() { return m_synth; }
     projectone::sequencer::Sequencer& sequencer() { return m_sequencer; }
@@ -28,6 +29,7 @@ private:
     projectone::synth::SynthVoiceEngine m_synth {};
     projectone::effects::EffectsChain m_fx {};
     projectone::sequencer::Sequencer m_sequencer {};
+    AudioBuffer m_blockBuffer {};
 };
 
 } // namespace projectone::engine
